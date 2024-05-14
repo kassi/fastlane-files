@@ -1,0 +1,7 @@
+# frozen_string_literal: true
+
+# The Deliverfile allows you to store various App Store Connect metadata
+# For more information, check out the docs
+# https://docs.fastlane.tools/actions/deliver/
+username(ENV.fetch("FASTLANE_USER", nil))
+languages(%w[en-US de-DE])

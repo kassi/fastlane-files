@@ -5,6 +5,9 @@ require:
 
 AllCops:
   TargetRubyVersion: 3
+  Exclude:
+    - fastlane/**/*
+    - templates/**/*
 
 Capybara:
   Enabled: false

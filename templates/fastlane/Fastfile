@@ -1,0 +1,6 @@
+# frozen_string_literal: true
+
+import_from_git(
+  url: "git@github.com:kassi/fastlane-files.git",
+  path: "shared/Fastfile"
+)
