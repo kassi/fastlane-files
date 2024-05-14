@@ -1,3 +1,9 @@
+## 1.0.1 (2024-05-14)
+
+### Bug fixes
+
+- remove outdated git reference
+
 ## 1.0.0 (2024-05-14)
 
 ### Features
