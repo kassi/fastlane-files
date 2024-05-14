@@ -1,0 +1,95 @@
+# Opt out from sending usage data
+opt_out_usage
+
+default_platform(:ios)
+
+platform :ios do
+  # https://www.runway.team/blog/how-to-set-up-a-ci-cd-pipeline-for-your-ios-app-fastlane-github-actions
+  desc "Load AppStore Connect API Key information to use in subsequent lanes"
+  lane :load_api_key do
+    app_store_connect_api_key(
+      key_id: ENV["APPSTORE_CONNECT_API_KEY_ID"],
+      issuer_id: ENV["APPSTORE_CONNECT_API_KEY_ISSUER_ID"],
+      key_content: ENV["APPSTORE_CONNECT_API_KEY_P8"],
+      is_key_content_base64: true,
+      in_house: false # detecting this via AppStore Connect private key not currently supported
+    )
+  end
+
+  desc "Register app on Apple Developer Portal and AppStore Connect"
+  lane :register do
+    create_app_online( # produce
+      language: "en-US",
+      # com.example.AppName => com.example.apps.AppName.ios
+      sku: CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier).
+        split(".").insert(2, "apps").append("ios").join("."),
+      enable_services: {}
+    )
+  end
+
+  desc "Generate and upload new localized screenshots and metadata"
+  desc "Params: send_success: boolean, indicating whether to send a success message via slack"
+  lane :upload_appstore_data do |options|
+    capture_screenshots(scheme: ENV["IOS_SCHEME"])
+    load_api_key
+    register
+    upload_to_app_store( # deliver
+      skip_binary_upload: true,
+      skip_screenshots: false,
+      skip_metadata: false,
+      skip_app_version_update: false,
+      overwrite_screenshots: true,
+      force: true,
+      # Precheck cannot check In-app purchases with the App Store Connect API Key (yet).
+      precheck_include_in_app_purchases: false,
+      app_review_information: {
+        first_name: ENV["FASTLANE_REVIEW_FIRSTNAME"],
+        last_name: ENV["FASTLANE_REVIEW_LASTNAME"],
+        phone_number: ENV["FASTLANE_REVIEW_PHONE"],
+        email_address: ENV["FASTLANE_REVIEW_EMAIL"]
+      }
+    )
+  rescue => exception
+    on_error(exception)
+    raise
+  else
+    on_success("Data uploaded to AppStore Connect") if options[:send_success]
+  end
+end
+
+def on_success(message, **props)
+  if ENV["FASTLANE_SLACK_URL"]
+    slack(
+      message: message,
+      success: true,
+      slack_url: ENV["FASTLANE_SLACK_URL"],
+      payload: {
+        "CI Build Number" => ENV["CI_BUILD_NUMBER"],
+        "CI Workflow" => ENV["CI_WORKFLOW"]
+      },
+    )
+  end
+end
+
+def on_error(exception)
+  if ENV["FASTLANE_SLACK_URL"]
+    slack(
+      message: "Build failed",
+      success: false,
+      slack_url: ENV["FASTLANE_SLACK_URL"],
+      payload: {
+        "CI Build Number" => ENV["CI_BUILD_NUMBER"],
+        "CI Workflow" => ENV["CI_WORKFLOW"]
+      },
+      attachment_properties: {
+        fields: [
+          {
+            title: "Error message",
+            value: exception.to_s,
+            short: false
+          }
+        ]
+      }
+    )
+  end
+end

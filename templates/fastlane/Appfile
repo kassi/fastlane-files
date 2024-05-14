@@ -1,0 +1,35 @@
+require "xcode_fastlane"
+
+mandatory_environment = %w[
+  APPSTORE_CONNECT_API_KEY_ID
+  APPSTORE_CONNECT_API_KEY_ISSUER_ID
+  APPSTORE_CONNECT_API_KEY_P8
+  FASTLANE_REVIEW_EMAIL
+  FASTLANE_REVIEW_FIRSTNAME
+  FASTLANE_REVIEW_LASTNAME
+  FASTLANE_REVIEW_PHONE
+  FASTLANE_USER
+]
+# Optional:
+#   FASTLANE_SLACK_URL
+if ENV["CI"]
+  mandatory_environment += %w[
+    CI_BUILD_NUMBER
+    CI_BUNDLE_ID
+    CI_PRODUCT
+    CI_WORKFLOW
+    CI_XCODE_SCHEME
+  ]
+end
+mandatory_environment.each do |var|
+  ENV[var] or abort "Missing environment variable: #{var}"
+end
+
+app_identifier(ENV["CI_BUNDLE_ID"] || XcodeFastlane.product_bundle_id)
+ENV["PRODUCT_NAME"] = ENV["CI_PRODUCT"] || XcodeFastlane.product_name
+ENV["APP_NAME"] = ENV["PRODUCT_NAME"]
+ENV["IOS_IPA_OUTPUT_NAME"] = ENV["PRODUCT_NAME"]
+ENV["IOS_SCHEME"] = ENV["CI_XCODE_SCHEME"] || XcodeFastlane.product_name
+
+# For more information about the Appfile, see:
+#     https://docs.fastlane.tools/advanced/#appfile
