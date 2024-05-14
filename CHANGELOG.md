@@ -1,3 +1,9 @@
+## 1.0.2 (2024-05-14)
+
+### Bug fixes
+
+- wrong gam name used
+
 ## 1.0.1 (2024-05-14)
 
 ### Bug fixes
