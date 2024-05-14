@@ -3,4 +3,4 @@
 source "https://rubygems.org"
 
 gem "fastlane"
-gem "fastlane_files", git: "https://github.com/kassi/fastlane-files"
+gem "fastlane_files"
