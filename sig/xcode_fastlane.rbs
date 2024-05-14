@@ -1,4 +1,9 @@
 module XcodeFastlane
   VERSION: String
-  # See the writing guide of rbs: https://github.com/ruby/rbs#guides
+
+  def self.project: () -> Xcodeproj
+
+  def self.product_bundle_id: (?String) -> String
+
+  def self.product_name: () -> String
 end
