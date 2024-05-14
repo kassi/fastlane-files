@@ -1,3 +1,9 @@
+## 1.0.3 (2024-05-14)
+
+### Bug fixes
+
+- wrong shared Fastfile location
+
 ## 1.0.2 (2024-05-14)
 
 ### Bug fixes

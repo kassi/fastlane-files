@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    xcode_fastlane (1.0.2)
+    xcode_fastlane (1.0.3)
       thor (~> 1.3)
       xcodeproj (~> 1.24)
 
