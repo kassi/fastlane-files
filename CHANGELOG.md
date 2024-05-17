@@ -1,3 +1,9 @@
+## 1.1.0 (2024-05-17)
+
+### Features
+
+- add method to switch to new git branch
+
 ## 1.0.3 (2024-05-14)
 
 ### Bug fixes
