@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "xcode_fastlane/version"
+require "git"
 require "xcodeproj"
 
 # Main module for helper methods and CLI.
@@ -24,5 +25,11 @@ module XcodeFastlane
   def self.product_name
     product = project.products.select { |p| p.explicit_file_type == "wrapper.application" }.first
     product.path.split(".").first
+  end
+
+  # Creates and checks out a new branch
+  def self.checkout_branch(name)
+    git = Git.open(".")
+    git.branch(name).checkout
   end
 end
