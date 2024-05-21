@@ -18,7 +18,6 @@ platform :mac do
 end
 
 platform :ios do
-
   desc "Create app on Apple Developer and App Store Connect"
   lane :create_app do
     create_app_online # produce
@@ -37,8 +36,8 @@ platform :ios do
     prepare_versioning
     if options[:commit]
       git_commit(allow_nothing_to_commit: true,
-                message: "build: update versioning system",
-                path: ["*.plist", "*.pbxproj"])
+                 message: "build: update versioning system",
+                 path: ["*.plist", "*.pbxproj"])
     end
   end
 
@@ -48,9 +47,9 @@ platform :ios do
       get_certificates           # invokes cert
       get_provisioning_profile   # invokes sigh
     else
-      sync_code_signing({readonly: true, type: "appstore"}) # invokes match
+      sync_code_signing({ readonly: true, type: "appstore" }) # invokes match
       update_code_signing_settings(
-        profile_name: lane_context[SharedValues::MATCH_PROVISIONING_PROFILE_MAPPING][ENV["APP_IDENTIFIER"]],
+        profile_name: lane_context[SharedValues::MATCH_PROVISIONING_PROFILE_MAPPING][ENV.fetch("APP_IDENTIFIER", nil)]
       )
     end
   end
@@ -75,7 +74,7 @@ platform :ios do
         UI.message("New version: #{new_version}")
 
         # new branch
-        XcodeFastlane.checkout_branch("#{ENV["RELEASE_BRANCH_PREFIX"]}#{new_version}")
+        XcodeFastlane.checkout_branch("#{ENV.fetch('RELEASE_BRANCH_PREFIX', nil)}#{new_version}")
 
         file = write_release_notes(text: lane_context[SharedValues::SEMVER_NEW_CHANGELOG])
         git_add(path: file)
@@ -194,7 +193,7 @@ end
 
 private_lane :get_app_category do
   app_category = nil
-  project = Xcodeproj::Project.open("../#{ENV["PROJECT_XCODEPROJ"]}")
+  project = Xcodeproj::Project.open("../#{ENV.fetch('PROJECT_XCODEPROJ', nil)}")
   project.objects.each do |object|
     if object.isa == "XCBuildConfiguration" && object.name == "Release"
       app_category = object.build_settings["INFOPLIST_KEY_LSApplicationCategoryType"]

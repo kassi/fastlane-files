@@ -4,13 +4,13 @@
 # For more information, check out the docs
 # https://docs.fastlane.tools/actions/deliver/
 app_review_information(
-  first_name: ENV["FASTLANE_REVIEW_FIRSTNAME"],
-  last_name: ENV["FASTLANE_REVIEW_LASTNAME"],
-  phone_number: ENV["FASTLANE_REVIEW_PHONE"],
-  email_address: ENV["FASTLANE_REVIEW_EMAIL"]
+  first_name: ENV.fetch("FASTLANE_REVIEW_FIRSTNAME", nil),
+  last_name: ENV.fetch("FASTLANE_REVIEW_LASTNAME", nil),
+  phone_number: ENV.fetch("FASTLANE_REVIEW_PHONE", nil),
+  email_address: ENV.fetch("FASTLANE_REVIEW_EMAIL", nil)
 )
-copyright("#{Time.now.year} #{ENV["FASTLANE_REVIEW_FIRSTNAME"]} #{ENV["FASTLANE_REVIEW_LASTNAME"]}")
+copyright("#{Time.now.year} #{ENV.fetch('FASTLANE_REVIEW_FIRSTNAME', nil)} #{ENV.fetch('FASTLANE_REVIEW_LASTNAME', nil)}")
 languages(%w[en-US de-DE])
 precheck_default_rule_level(:error)
-precheck_include_in_app_purchases(:false)
+precheck_include_in_app_purchases(false)
 username(ENV.fetch("FASTLANE_USER", nil))
