@@ -11,7 +11,7 @@ platform :ios do
   end
 end
 
-platform :macos do
+platform :mac do
   before_all do
     Dotenv.load ".env.mac"
   end
