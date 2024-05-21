@@ -1,3 +1,9 @@
+## 1.2.1 (2024-05-21)
+
+### Bug fixes
+
+- rename mac platform
+
 ## 1.2.0 (2024-05-21)
 
 ### Features
