@@ -1,3 +1,9 @@
+## 1.2.0 (2024-05-21)
+
+### Features
+
+- new fastfile with proper lane setup
+
 ## 1.1.0 (2024-05-17)
 
 ### Features
