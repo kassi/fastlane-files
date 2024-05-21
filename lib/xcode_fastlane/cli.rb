@@ -13,12 +13,21 @@ module XcodeFastlane
 
     desc "init", "Initialize fastlane setup"
     def init
-      copy_file ".gitignore"
-      copy_file "Gemfile"
-      copy_file "fastlane/Appfile"
-      copy_file "fastlane/Deliverfile"
-      copy_file "fastlane/Fastfile"
-      copy_file "fastlane/Snapfile"
+      %w[
+        .gitignore
+        Gemfile
+        fastlane/.env.beta
+        fastlane/.env.ios
+        fastlane/.env.mac
+        fastlane/.env.release
+        fastlane/Appfile
+        fastlane/Fastfile
+        fastlane/Snapfile
+      ].each do |file|
+        copy_file file
+      end
     end
+
+    # TODO: run deliver init and overwrite with Deliverfile
   end
 end

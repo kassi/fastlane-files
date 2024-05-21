@@ -11,6 +11,18 @@ module XcodeFastlane
     @project ||= Xcodeproj::Project.open(Pathname.glob("../*.xcodeproj").first)
   end
 
+  # Returns the first target
+  def self.target
+    project.targets.first
+  end
+
+  # Generates an SKU
+  # Requires environment: PRODUCE_PLATFORM to be set.
+  def self.sku
+    platform = ENV.fetch("PRODUCE_PLATFORM")
+    CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier) + ".#{platform}"
+  end
+
   # Returns product bundle identifier for the given target or the first one found, if target_name is nil.
   #
   # Arguments:

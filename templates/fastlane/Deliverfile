@@ -3,5 +3,14 @@
 # The Deliverfile allows you to store various App Store Connect metadata
 # For more information, check out the docs
 # https://docs.fastlane.tools/actions/deliver/
-username(ENV.fetch("FASTLANE_USER", nil))
+app_review_information(
+  first_name: ENV["FASTLANE_REVIEW_FIRSTNAME"],
+  last_name: ENV["FASTLANE_REVIEW_LASTNAME"],
+  phone_number: ENV["FASTLANE_REVIEW_PHONE"],
+  email_address: ENV["FASTLANE_REVIEW_EMAIL"]
+)
+copyright("#{Time.now.year} #{ENV["FASTLANE_REVIEW_FIRSTNAME"]} #{ENV["FASTLANE_REVIEW_LASTNAME"]}")
 languages(%w[en-US de-DE])
+precheck_default_rule_level(:error)
+precheck_include_in_app_purchases(:false)
+username(ENV.fetch("FASTLANE_USER", nil))

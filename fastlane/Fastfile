@@ -6,56 +6,150 @@ opt_out_usage
 default_platform(:ios)
 
 platform :ios do
-  # https://www.runway.team/blog/how-to-set-up-a-ci-cd-pipeline-for-your-ios-app-fastlane-github-actions
-  desc "Load AppStore Connect API Key information to use in subsequent lanes"
-  lane :load_api_key do
-    app_store_connect_api_key(
-      key_id: ENV.fetch("APPSTORE_CONNECT_API_KEY_ID", nil),
-      issuer_id: ENV.fetch("APPSTORE_CONNECT_API_KEY_ISSUER_ID", nil),
-      key_content: ENV.fetch("APPSTORE_CONNECT_API_KEY_P8", nil),
-      is_key_content_base64: true,
-      in_house: false # detecting this via AppStore Connect private key not currently supported
-    )
+  before_all do
+    Dotenv.load ".env.ios"
+  end
+end
+
+platform :macos do
+  before_all do
+    Dotenv.load ".env.mac"
+  end
+end
+
+platform :ios do
+
+  desc "Create app on Apple Developer and App Store Connect"
+  lane :create_app do
+    create_app_online # produce
   end
 
-  desc "Register app on Apple Developer Portal and AppStore Connect"
-  lane :register do
-    create_app_online( # produce
-      language: "en-US",
-      # com.example.AppName => com.example.apps.AppName.ios
-      sku: CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
-        .split(".").insert(2, "apps").append("ios").join("."),
-      enable_services: {}
-    )
+  desc "Prepare Xcode project for use with match code signing"
+  lane :prepare_for_match do
+    update_code_signing_settings
+    match
   end
 
-  desc "Generate and upload new localized screenshots and metadata"
-  desc "Params: send_success: boolean, indicating whether to send a success message via slack"
-  lane :upload_appstore_data do |options|
+  desc "Prepare app for use with auto versioning.\n"
+  desc "Param `commit: true` to commit changes.\n"
+  desc "Required once locally."
+  lane :prepare_for_versioning do |options|
+    prepare_versioning
+    if options[:commit]
+      git_commit(allow_nothing_to_commit: true,
+                message: "build: update versioning system",
+                path: ["*.plist", "*.pbxproj"])
+    end
+  end
+
+  desc "Sync certificates"
+  lane :sync_certs_and_profiles do |options|
+    if options[:auto]
+      get_certificates           # invokes cert
+      get_provisioning_profile   # invokes sigh
+    else
+      sync_code_signing({readonly: true, type: "appstore"}) # invokes match
+      update_code_signing_settings(
+        profile_name: lane_context[SharedValues::MATCH_PROVISIONING_PROFILE_MAPPING][ENV["APP_IDENTIFIER"]],
+      )
+    end
+  end
+
+  desc "Write release notes"
+  lane :write_release_notes do |options|
+    content = options[:text]
+    UI.user_error!("No changelog passed.") if content.nil?
+
+    release_notes_file = Dir.glob("**/default/release_notes.txt").first
+    UI.user_error!("No default release notes file found.") if release_notes_file.nil?
+
+    File.write(release_notes_file, content)
+    return release_notes_file
+  end
+
+  desc "Ensure to be on a release branch for the next release"
+  lane :ensure_release_branch_and_version do
+    unless branch_name.start_with?(ENV["RELEASE_BRANCH_PREFIX"])
+      if get_versioning_info
+        new_version = lane_context[SharedValues::SEMVER_NEW_VERSION]
+        UI.message("New version: #{new_version}")
+
+        # new branch
+        XcodeFastlane.checkout_branch("#{ENV["RELEASE_BRANCH_PREFIX"]}#{new_version}")
+
+        file = write_release_notes(text: lane_context[SharedValues::SEMVER_NEW_CHANGELOG])
+        git_add(path: file)
+
+        # Create version via commitizen
+        semantic_bump
+      else
+        UI.user_error!("No new version to bump.")
+      end
+    end
+  end
+
+  desc "Create ipa"
+  lane :build do
+    sync_certs_and_profiles
+    # Commit changes made by match
+    git_commit(
+      allow_nothing_to_commit: true,
+      message: "build: update certificate and provision setting",
+      path: ["*.plist", "*.pbxproj"]
+    )
+
+    # Increases the build number by 1
+    old_build_number = get_build_number
+    increment_build_number
+
+    # Creates a signed file
+    build_app # invokes gym
+
+    commit_version_bump(message: "bump: build #{old_build_number} → #{lane_context[SharedValues::BUILD_NUMBER]}")
+  end
+
+  desc "Take screenshots."
+  lane :screenshot do
     capture_screenshots(scheme: ENV.fetch("IOS_SCHEME", nil))
-    load_api_key
-    register
-    upload_to_app_store( # deliver
-      skip_binary_upload: true,
-      skip_screenshots: false,
-      skip_metadata: false,
-      skip_app_version_update: false,
-      overwrite_screenshots: true,
-      force: true,
-      # Precheck cannot check In-app purchases with the App Store Connect API Key (yet).
-      precheck_include_in_app_purchases: false,
-      app_review_information: {
-        first_name: ENV.fetch("FASTLANE_REVIEW_FIRSTNAME", nil),
-        last_name: ENV.fetch("FASTLANE_REVIEW_LASTNAME", nil),
-        phone_number: ENV.fetch("FASTLANE_REVIEW_PHONE", nil),
-        email_address: ENV.fetch("FASTLANE_REVIEW_EMAIL", nil)
-      }
-    )
+  end
+
+  desc "Upload to App Store."
+  lane :upload_testflight do
+    app_store_connect_api_key
+    testflight # invokes pilot
+  end
+
+  desc "Upload to App Store."
+  lane :upload_appstore do
+    app_store_connect_api_key
+    upload_to_app_store # invokes deliver
+  end
+
+  desc "Create release branch, build, and upload to TestFlight."
+  lane :beta do
+    run_tests # invokes scan
+    ensure_release_branch_and_version
+    build
+    upload_testflight
   rescue StandardError => e
     on_error(e)
     raise
   else
-    on_success("Data uploaded to AppStore Connect") if options[:send_success]
+    on_success("Beta build finished and uploaded to TestFlight")
+  end
+
+  desc "Create app, screenshot, build and upload."
+  lane :release_app do
+    create_app
+    ensure_release_branch_and_version
+    build
+    screenshot
+    upload_appstore
+  rescue StandardError => e
+    on_error(e)
+    raise
+  else
+    on_success("Build and upload to AppStore finished.")
   end
 end
 
@@ -67,6 +161,7 @@ def on_success(message, **_props)
     success: true,
     slack_url: ENV.fetch("FASTLANE_SLACK_URL", nil),
     payload: {
+      "Build Number" => lane_context[SharedValues::BUILD_NUMBER],
       "CI Build Number" => ENV.fetch("CI_BUILD_NUMBER", nil),
       "CI Workflow" => ENV.fetch("CI_WORKFLOW", nil)
     }
@@ -81,6 +176,7 @@ def on_error(exception)
     success: false,
     slack_url: ENV.fetch("FASTLANE_SLACK_URL", nil),
     payload: {
+      "Build Number" => lane_context[SharedValues::BUILD_NUMBER],
       "CI Build Number" => ENV.fetch("CI_BUILD_NUMBER", nil),
       "CI Workflow" => ENV.fetch("CI_WORKFLOW", nil)
     },
@@ -94,4 +190,16 @@ def on_error(exception)
       ]
     }
   )
+end
+
+private_lane :get_app_category do
+  app_category = nil
+  project = Xcodeproj::Project.open("../#{ENV["PROJECT_XCODEPROJ"]}")
+  project.objects.each do |object|
+    if object.isa == "XCBuildConfiguration" && object.name == "Release"
+      app_category = object.build_settings["INFOPLIST_KEY_LSApplicationCategoryType"]
+      break if app_category
+    end
+  end
+  app_category
 end

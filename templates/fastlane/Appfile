@@ -1,14 +1,16 @@
 require "xcode_fastlane"
 
 mandatory_environment = %w[
-  APPSTORE_CONNECT_API_KEY_ID
-  APPSTORE_CONNECT_API_KEY_ISSUER_ID
-  APPSTORE_CONNECT_API_KEY_P8
+  APP_STORE_CONNECT_KEY_KEY_ID
+  APP_STORE_CONNECT_KEY_ISSUER_ID
+  APP_STORE_CONNECT_KEY_KEY
   FASTLANE_REVIEW_EMAIL
   FASTLANE_REVIEW_FIRSTNAME
   FASTLANE_REVIEW_LASTNAME
   FASTLANE_REVIEW_PHONE
+  FASTLANE_TEAM_ID
   FASTLANE_USER
+  GITHUB_API_TOKEN
 ]
 # Optional:
 #   FASTLANE_SLACK_URL
@@ -25,11 +27,14 @@ mandatory_environment.each do |var|
   ENV[var] or abort "Missing environment variable: #{var}"
 end
 
-app_identifier(ENV["CI_BUNDLE_ID"] || XcodeFastlane.product_bundle_id)
+ENV["APP_IDENTIFIER"] = ENV["CI_BUNDLE_ID"] || XcodeFastlane.product_bundle_id
 ENV["PRODUCT_NAME"] = ENV["CI_PRODUCT"] || XcodeFastlane.product_name
 ENV["APP_NAME"] = ENV["PRODUCT_NAME"]
 ENV["IOS_IPA_OUTPUT_NAME"] = ENV["PRODUCT_NAME"]
 ENV["IOS_SCHEME"] = ENV["CI_XCODE_SCHEME"] || XcodeFastlane.product_name
+ENV["RELEASE_BRANCH_PREFIX"] = "releases/"
+
+app_identifier(ENV["APP_IDENTIFIER"])
 
 # For more information about the Appfile, see:
 #     https://docs.fastlane.tools/advanced/#appfile
