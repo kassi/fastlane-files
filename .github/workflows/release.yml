@@ -1,0 +1,46 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/cache@v4
+      with:
+        path: vendor/bundle
+        key: ${{ runner.os }}-gem-${{ hashFiles('**/Gemfile') }}
+        restore-keys: |
+          ${{ runner.os }}-gem-
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: 3.2.2
+    - name: Install dependencies
+      run: bundle check || bundle install --jobs=4 --retry=3 --path vendor/bundle
+    - name: Run tests
+      run: bundle exec rake
+    - name: Build gem
+      run: |
+        cat <<<"$DATA" > github.json
+        bundle exec rake build
+
+        mkdir -p $HOME/.gem
+        touch $HOME/.gem/credentials
+        chmod 0600 $HOME/.gem/credentials
+        printf -- "---\n:rubygems_api_key: ${RUBYGEMS_TOKEN}\n" > $HOME/.gem/credentials
+        gem push pkg/*.gem
+      env:
+        RUBYGEMS_TOKEN: ${{ secrets.RUBYGEMS_TOKEN }}
+        DATA: ${{ toJSON(github) }}
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: gem
+        path: |
+          pkg
+          github.json
